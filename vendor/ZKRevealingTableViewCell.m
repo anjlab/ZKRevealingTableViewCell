@@ -51,7 +51,9 @@
 
 @end
 
-@implementation ZKRevealingTableViewCell
+@implementation ZKRevealingTableViewCell {
+    BOOL _stopAnimation;
+}
 
 #pragma mark - Private Properties
 
@@ -67,7 +69,6 @@
 @synthesize direction    = _direction;
 @synthesize delegate     = _delegate;
 @synthesize shouldBounce = _shouldBounce;
-@synthesize pixelsToReveal = _pixelsToReveal;
 @synthesize backView     = _backView;
 
 #pragma mark - Lifecycle
@@ -78,39 +79,16 @@
     if (self) {
         self.direction = ZKRevealingTableViewCellDirectionBoth;
 		self.shouldBounce = YES;
-		self.pixelsToReveal = 0;
 		
 		self._panGesture = [[[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(_pan:)] autorelease];
 		self._panGesture.delegate = self;
 		
 		[self addGestureRecognizer:self._panGesture];
 		
-		self.contentView.backgroundColor = [UIColor clearColor];
+		self.contentView.backgroundColor = [UIColor whiteColor];
 		
 		UIView *backgroundView         = [[[UIView alloc] initWithFrame:self.contentView.frame] autorelease];
-		backgroundView.backgroundColor = [UIColor clearColor];
-		self.backView                  = backgroundView;
-    }
-    return self;
-}
-
-- (id)initWithCoder:(NSCoder *)aDecoder
-{
-    self = [super initWithCoder:aDecoder];
-    if (self) {
-        self.direction = ZKRevealingTableViewCellDirectionBoth;
-		self.shouldBounce = YES;
-		self.pixelsToReveal = 0;
-		
-		self._panGesture = [[[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(_pan:)] autorelease];
-		self._panGesture.delegate = self;
-		
-		[self addGestureRecognizer:self._panGesture];
-		
-		self.contentView.backgroundColor = [UIColor clearColor];
-		
-		UIView *backgroundView         = [[[UIView alloc] initWithFrame:self.contentView.frame] autorelease];
-		backgroundView.backgroundColor = [UIColor clearColor];
+		backgroundView.backgroundColor = [UIColor greenColor];
 		self.backView                  = backgroundView;
     }
     return self;
@@ -146,7 +124,7 @@ static char BOOLRevealing;
 {
 	// Don't change the value if its already that value.
 	// Reveal unless the delegate says no
-	if (revealing == self.revealing || 
+	if (revealing == self.revealing ||
 		(revealing && self._shouldReveal))
 		return;
 	
@@ -211,35 +189,29 @@ static char BOOLRevealing;
 		if ((newCenterPosition < originalCenter && !self._shouldDragLeft) || (newCenterPosition > originalCenter && !self._shouldDragRight))
 			newCenterPosition = originalCenter;
 		
-		if (self.pixelsToReveal != 0) {
-			// Let's not go waaay out of bounds
-			if (newCenterPosition > originalCenter + self.pixelsToReveal)
-				newCenterPosition = originalCenter + self.pixelsToReveal;
-			
-			else if (newCenterPosition < originalCenter - self.pixelsToReveal)
-				newCenterPosition = originalCenter - self.pixelsToReveal;
-		}else {
-			// Let's not go waaay out of bounds
-			if (newCenterPosition > self.bounds.size.width + originalCenter)
-				newCenterPosition = self.bounds.size.width + originalCenter;
-			
-			else if (newCenterPosition < -originalCenter)
-				newCenterPosition = -originalCenter;
-		}
+		// Let's not go waaay out of bounds
+		if (newCenterPosition > self.bounds.size.width + originalCenter)
+			newCenterPosition = self.bounds.size.width + originalCenter;
+		
+		else if (newCenterPosition < -originalCenter)
+			newCenterPosition = -originalCenter;
 		
 		CGPoint center = self.contentView.center;
 		center.x = newCenterPosition;
 		
 		self.contentView.layer.position = center;
+        
+        [self cellIsRevealing];
 		
 	} else if (recognizer.state == UIGestureRecognizerStateEnded || recognizer.state == UIGestureRecognizerStateCancelled) {
-				
+        
 		// Swiping left, velocity is below 0.
 		// Swiping right, it is above 0
 		// If the velocity is above the width in points per second at any point in the pan, push it to the acceptable side
 		// Otherwise, if we are 60 points in, push to the other side
 		// If we are < 60 points in, bounce back
 		
+        
 #define kMinimumVelocity self.contentView.frame.size.width
 #define kMinimumPan      60.0
 		
@@ -249,7 +221,7 @@ static char BOOLRevealing;
 		push |= (velocityX > kMinimumVelocity);
 		push |= ((self._lastDirection == ZKRevealingTableViewCellDirectionLeft && translation.x < -kMinimumPan) || (self._lastDirection == ZKRevealingTableViewCellDirectionRight && translation.x > kMinimumPan));
 		push &= self._shouldReveal;
-		push &= ((self._lastDirection == ZKRevealingTableViewCellDirectionRight && self._shouldDragRight) || (self._lastDirection == ZKRevealingTableViewCellDirectionLeft && self._shouldDragLeft)); 
+		push &= ((self._lastDirection == ZKRevealingTableViewCellDirectionRight && self._shouldDragRight) || (self._lastDirection == ZKRevealingTableViewCellDirectionLeft && self._shouldDragLeft));
 		
 		if (velocityX > 0 && self._lastDirection == ZKRevealingTableViewCellDirectionLeft)
 			push = NO;
@@ -268,7 +240,7 @@ static char BOOLRevealing;
 			CGFloat multiplier = self._bounceMultiplier;
 			if (!self.isRevealing)
 				multiplier *= -1.0;
-				
+            
 			[self _slideInContentViewFromDirection:self._currentDirection offsetMultiplier:multiplier];
 			[self _setRevealing:NO];
 			
@@ -277,11 +249,19 @@ static char BOOLRevealing;
 			ZKRevealingTableViewCellDirection finalDir = ZKRevealingTableViewCellDirectionRight;
 			if (translation.x < 0)
 				finalDir = ZKRevealingTableViewCellDirectionLeft;
-		
+            
 			[self _slideInContentViewFromDirection:finalDir offsetMultiplier:-1.0 * self._bounceMultiplier];
 			[self _setRevealing:NO];
 		}
 	}
+}
+
+-(void) cellIsRevealing {
+    
+}
+
+-(void) revealingFinished {
+    
 }
 
 - (BOOL)_shouldDragLeft
@@ -305,7 +285,7 @@ static char BOOLRevealing;
 }
 
 #pragma mark - Sliding
-#define kBOUNCE_DISTANCE 7.0
+#define kBOUNCE_DISTANCE 20.0
 
 - (void)_slideInContentViewFromDirection:(ZKRevealingTableViewCellDirection)direction offsetMultiplier:(CGFloat)multiplier
 {
@@ -328,73 +308,73 @@ static char BOOLRevealing;
 	
 	
 	[UIView animateWithDuration:0.1
-						  delay:0 
-						options:UIViewAnimationOptionCurveEaseOut|UIViewAnimationOptionAllowUserInteraction 
-					 animations:^{ self.contentView.center = CGPointMake(self._originalCenter, self.contentView.center.y); } 
+						  delay:0
+						options:UIViewAnimationOptionCurveEaseOut|UIViewAnimationOptionAllowUserInteraction
+					 animations:^{ self.contentView.center = CGPointMake(self._originalCenter, self.contentView.center.y); }
 					 completion:^(BOOL f) {
-						 						 
-						 [UIView animateWithDuration:0.1 delay:0 
-											 options:UIViewAnimationCurveEaseOut
-										  animations:^{ self.contentView.frame = CGRectOffset(self.contentView.frame, bounceDistance, 0); } 
-										  completion:^(BOOL f) {                     
-											  
-												  [UIView animateWithDuration:0.1 delay:0 
-																	  options:UIViewAnimationCurveEaseIn
-																   animations:^{ self.contentView.frame = CGRectOffset(self.contentView.frame, -bounceDistance, 0); } 
-																   completion:NULL];
+                         if(_stopAnimation) return;
+						 [UIView animateWithDuration:0.1 delay:0
+											 options:UIViewAnimationCurveLinear
+										  animations:^{ self.contentView.frame = CGRectOffset(self.contentView.frame, bounceDistance, 0); }
+										  completion:^(BOOL f) {
+                                              
+                                              if(_stopAnimation) return;
+                                              [UIView animateWithDuration:0.1 delay:0
+                                                                  options:UIViewAnimationCurveLinear
+                                                               animations:^{ self.contentView.frame = CGRectOffset(self.contentView.frame, -bounceDistance, 0); }
+                                                               completion:nil];
 										  }
-						  ]; 
+						  ];
 					 }];
+}
+
+-(void) prepareForReuse {
+    [super prepareForReuse];
+    
+    [UIView animateWithDuration:0.0
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{_stopAnimation = YES; self.contentView.frame = self.bounds; }
+                     completion:^(BOOL finished){ _stopAnimation = NO; }
+     ];
 }
 
 - (void)_slideOutContentViewInDirection:(ZKRevealingTableViewCellDirection)direction;
 {
 	CGFloat x;
 	
-	if (self.pixelsToReveal != 0) {
-		switch (direction) {
-			case ZKRevealingTableViewCellDirectionLeft:
-				x = self._originalCenter - self.pixelsToReveal;
-				break;
-			case ZKRevealingTableViewCellDirectionRight:
-				x = self._originalCenter + self.pixelsToReveal;
-				break;
-			default:
-				@throw [NSException exceptionWithName:NSInternalInconsistencyException reason:@"Unhandled gesture direction" userInfo:[NSDictionary dictionaryWithObject:[NSNumber numberWithInteger:direction] forKey:@"direction"]];
-				break;
-		}
-	}
-	else {
-		switch (direction) {
-			case ZKRevealingTableViewCellDirectionLeft:
-				x = - self._originalCenter;
-				break;
-			case ZKRevealingTableViewCellDirectionRight:
-				x = self.contentView.frame.size.width + self._originalCenter;
-				break;
-			default:
-				@throw [NSException exceptionWithName:NSInternalInconsistencyException reason:@"Unhandled gesture direction" userInfo:[NSDictionary dictionaryWithObject:[NSNumber numberWithInteger:direction] forKey:@"direction"]];
-				break;
-		}
+	switch (direction) {
+		case ZKRevealingTableViewCellDirectionLeft:
+			x = - self._originalCenter;
+			break;
+		case ZKRevealingTableViewCellDirectionRight:
+			x = self.contentView.frame.size.width + self._originalCenter;
+			break;
+		default:
+			@throw [NSException exceptionWithName:NSInternalInconsistencyException reason:@"Unhandled gesture direction" userInfo:[NSDictionary dictionaryWithObject:[NSNumber numberWithInteger:direction] forKey:@"direction"]];
+			break;
 	}
 	
-	[UIView animateWithDuration:0.2 
-						  delay:0 
-						options:UIViewAnimationOptionCurveEaseOut 
-					 animations:^{ self.contentView.center = CGPointMake(x, self.contentView.center.y); } 
-					 completion:NULL];
+	[UIView animateWithDuration:0.2
+						  delay:0
+						options:UIViewAnimationOptionCurveEaseOut
+					 animations:^{ self.contentView.center = CGPointMake(x, self.contentView.center.y); [self cellIsRevealing]; }
+					 completion:nil];
 }
 
 #pragma mark - UIGestureRecognizerDelegate
 
 - (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer
 {
-	if (gestureRecognizer == self._panGesture) {
+	if ([gestureRecognizer respondsToSelector:@selector(translationInView:)]) {
 		UIScrollView *superview = (UIScrollView *)self.superview;
 		CGPoint translation = [(UIPanGestureRecognizer *)gestureRecognizer translationInView:superview];
 		
+        //if(![self isRevealing] && [self _shouldDragLeft] && translation.x > 0) return NO;
+        //if(![self isRevealing] && [self _shouldDragRight] && translation.x < 0) return NO;
 		// Make sure it is scrolling horizontally
-		return ((fabs(translation.x) / fabs(translation.y) > 1) ? YES : NO && (superview.contentOffset.y == 0.0 && superview.contentOffset.x == 0.0));
+		return (fabs(translation.x) / fabs(translation.y) > 1 ? YES : NO 
+                && (superview.contentOffset.y == 0.0 && superview.contentOffset.x == 0.0));
 	}
 	return NO;
 }
